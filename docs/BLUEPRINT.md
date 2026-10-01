@@ -12,6 +12,7 @@ websocket + msgpack server-client로 통신한다.
 | 경로 | 역할 |
 |---|---|
 | [src/g1_eval/](../src/g1_eval/) | 직접 작성하는 client package. 모든 benchmark venv에 설치되므로 numpy, msgpack, websockets만 의존 |
+| [policy_server/](../policy_server/) | unifolm-wla venv에서 실행되는 server 쪽 확장 (RTC 등). submodule을 import해서 쓰고, submodule 파일은 수정하지 않음 |
 | [scripts/](../scripts/) | 실행/검증 entry point |
 | [third_party/](../third_party/) | 외부 repo (git submodule, commit 고정). 각자 자체 `.venv` 사용 |
 | `checkpoints/`, `data/`, `outputs/` | 대용량/generated 파일 (gitignore) |
@@ -24,6 +25,23 @@ websocket + msgpack server-client로 통신한다.
 - 연결하면 server가 metadata(`data_keys`, `action_chunk_size` 등)를 먼저 보내고, 이를 `self.metadata`에 저장한다.
 - `get_action(obs)`: `{'type': 'get_action', 'obs': obs}`를 보내고 action dict를 반환한다.
 - codec은 model_server의 [msgpack_numpy.py](../third_party/unifolm-wla/model_server/tools/msgpack_numpy.py)와 같은 포맷이다. submodule을 import하지 않도록 client 쪽에 따로 두었다.
+
+## policy_server
+
+unifolm-wla venv와 `PYTHONPATH=third_party/unifolm-wla:.`로 실행한다.
+
+### [rtc.py](../policy_server/rtc.py)
+
+Real-Time Chunking(RTC) guided flow sampling. Physical Intelligence의 공식 JAX 구현을 PyTorch로 port했다 (출처와 license는 파일 header에 표기).
+- `realtime_action(velocity_fn, noise, ...)`: 모델과 무관한 generic sampler. `velocity_fn(x_t, t) -> v_t`만 받는다.
+- flow time convention: t=0이 noise, t=1이 data (unifolm-wla와 같음)
+
+### [unifolm_rtc.py](../policy_server/unifolm_rtc.py)
+
+`enable_rtc(model, prev_action_chunk, ...)`: unifolm-wla framework model의 `predict_action`이 RTC sampling을 쓰도록 **instance 단위로** 교체한다.
+- `prev_action_chunk`가 요청마다 바뀌므로 매 추론 전에 다시 호출한다.
+- `prev_action_chunk`는 현재 state 기준의 **normalized unified action** (B, H, 54)이어야 한다. EE와 base pose action이 현재 state에 대한 상대값이라, 이전 chunk를 현재 state 기준으로 다시 표현해야 한다.
+- 이유와 대안은 [DESIGN.md](DESIGN.md#rtc를-submodule-수정-없이-주입) 참고.
 
 ## unifolm-wla model_server contract
 

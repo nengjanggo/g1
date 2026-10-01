@@ -57,4 +57,17 @@ uv run python scripts/check_policy_server.py --port 8600
 추론 latency는 server log의 `predict=..ms`로 확인한다.
 server 시작 시 출력되는 `TypeError: not enough arguments for format string` logging 에러는 upstream의 무해한 버그이다.
 
+### RTC(Real-Time Chunking) 검증
+
+server 없이 모델을 직접 load한다 (VRAM 약 13GB). 실행 위치는 g1 root:
+
+```bash
+# port 단위 self-check (CPU, 수 초)
+third_party/unifolm-wla/.venv/bin/python policy_server/rtc.py
+
+# 실제 모델로 검증 (exit code 0이면 OK)
+PYTHONPATH=third_party/unifolm-wla:. third_party/unifolm-wla/.venv/bin/python -m policy_server.check_rtc_unifolm \
+    --ckpt_path checkpoints/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors
+```
+
 문제가 생기면 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) 참고.
