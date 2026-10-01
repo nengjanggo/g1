@@ -1,3 +1,6 @@
 [submodule "third_party/unifolm-wla"]
 	path = third_party/unifolm-wla
 	url = https://github.com/unitreerobotics/unifolm-wla
+[submodule "third_party/IsaacLab-Arena"]
+	path = third_party/IsaacLab-Arena
+	url = https://github.com/isaac-sim/IsaacLab-Arena

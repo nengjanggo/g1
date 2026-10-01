@@ -7,7 +7,7 @@ Unitree G1에서 VLA policy(unifolm-wla)를 simulation benchmark(IsaacLab-Arena,
 
 - Ubuntu 22.04, NVIDIA GPU (RTX 3090 24GB에서 검증). unifolm-wla server만으로 VRAM 약 12GB 사용
 - [uv](https://github.com/astral-sh/uv) >= 0.11, git-lfs
-- 디스크: checkpoint 약 13GB
+- 디스크: checkpoint 약 13GB, IsaacLab-Arena venv(Isaac Sim 포함) 약 35GB, Arena scene asset 약 1.2GB
 
 ## Setup
 
@@ -39,6 +39,17 @@ uvx --from huggingface_hub hf download unitreerobotics/UnifoLM-WLA-1.0-Base \
 
 `flash-attn`은 선택 사항. 설치하지 않으면 자동으로 `sdpa`로 fallback한다.
 
+### 4. IsaacLab-Arena (Isaac Sim 6 / Isaac Lab 3, Python 3.12)
+
+```bash
+cd third_party/IsaacLab-Arena
+# OMNI_KIT_ACCEPT_EULA: Isaac Sim EULA 동의 (없으면 설치/실행 중 대화형 prompt에서 멈춤)
+OMNI_KIT_ACCEPT_EULA=YES UV_HTTP_TIMEOUT=300 uv sync --frozen
+cd ../..
+```
+
+Isaac Sim wheel이 커서 첫 설치에 30분 이상 걸린다.
+
 ## 실행
 
 ### Policy server 동작 확인
@@ -69,5 +80,21 @@ third_party/unifolm-wla/.venv/bin/python policy_server/rtc.py
 PYTHONPATH=third_party/unifolm-wla:. third_party/unifolm-wla/.venv/bin/python -m policy_server.check_rtc_unifolm \
     --ckpt_path checkpoints/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors
 ```
+
+### IsaacLab-Arena G1 loco-manipulation task 동작 확인
+
+zero action으로 GUI를 띄워 scene과 G1이 뜨는지 확인한다 (third_party/IsaacLab-Arena에서):
+
+```bash
+cd third_party/IsaacLab-Arena
+OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evaluation/policy_runner.py \
+    --viz kit --policy_type zero_action --num_steps 3000 --enable_cameras \
+    galileo_g1_locomanip_pick_and_place
+```
+
+- 첫 실행은 scene asset(약 1.2GB)을 NVIDIA S3에서 `/tmp/https/`로 받느라 20분 이상 걸린다. 이후에는 약 1.5분이다. `/tmp`라서 재부팅하면 다시 받는다.
+- GUI 실행 시 약 7 step/s(실시간의 약 0.14배)로 돈다. 대량 평가는 `--viz`를 빼고 headless로 실행한다.
+- 결과 report는 `third_party/IsaacLab-Arena/outputs/<timestamp>/index.html`에 생성된다.
+- 로그의 `[Error] [omni.rtx.materials]`, `MDLC`, PhysX cooking 경고는 배경 asset의 material/mesh 문제로, 실행에는 영향이 없다.
 
 문제가 생기면 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) 참고.
