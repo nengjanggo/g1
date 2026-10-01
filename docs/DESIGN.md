@@ -23,3 +23,12 @@
 - 원본(Physical Intelligence, JAX)의 알고리즘과 상수를 그대로 쓴다. 기본값도 원본과 같다: schedule `exp`, `max_guidance_weight=5.0`.
 - RTC는 soft guidance다. 원본 eval도 앞쪽 `inference_delay` step은 **이전 chunk에서 실행**하고, 새 chunk는 그 이후부터 쓴다. 새 chunk의 prefix가 이전 chunk와 정확히 같을 필요는 없다.
 - `max_guidance_weight`를 크게 잡으면(예: 100) 4-step Euler에서 overshoot해서 발산하는 것을 확인했다. 그래서 상한은 원본 기본값을 유지한다.
+
+## G1-Dex1을 Arena WBC에 붙이는 방법
+
+- **결정:** Arena의 G1(Dex3) 대신 unitree_sim_isaaclab의 G1 + Dex1 USD를 쓰고, Arena WBC가 가정하는 43-dof(Dex3) 관절 배열과의 차이는 [g1_dex1.py](../arena_ext/g1_dex1.py)에서 메운다.
+  - 관측: sim에 없는 Dex3 hand 관절 10개를 0으로 채워 43개로 맞춘 robot data proxy를 WBC에 넘긴다.
+  - 출력: WBC 출력 중 sim에 있는 관절만 쓰고, Dex1 관절 4개는 Dex3 hand slot 4개에 배정한 뒤 `hand_state`로 덮어쓴다.
+- **이유:** unifolm-wla는 Dex1, Inspire, BrainCo로만 학습됐고 Dex3 데이터가 없다. 손목 카메라에 보이는 gripper 모양까지 학습 데이터와 맞추려면 Dex1 모델이 필요하다.
+- **검토한 대안:** Arena의 Dex3 G1에 손목 카메라만 추가하고 gripper 값을 Dex3 open/close로 매핑. WBC를 건드리지 않아 단순하지만, 모델이 본 적 없는 손이 된다.
+- **trade-off:** Arena 내부 함수(`prepare_observations`, `postprocess_actions`)를 module 단위로 교체한다. Arena가 이 함수들의 signature나 관절 가정을 바꾸면 깨진다. 관절 수가 어긋나면 Arena의 assert에서 바로 실패하므로 조용히 틀릴 가능성은 낮다.

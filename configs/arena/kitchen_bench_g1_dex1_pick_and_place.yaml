@@ -1,0 +1,81 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# isaaclab_arena_environments/kitchen_bench/kitchen_bench_lightwheel_pick_and_place.yaml에서
+# embodiment를 G1-Dex1(arena_ext/g1_dex1.py)로 바꾸고, 조리대와의 거리(distance_m)를 0.3에서 0.05로 줄이고,
+# G1 WBC가 요구하는 50Hz 제어 주기를 설정했다.
+
+env_name: kitchen_bench_g1_dex1_pick_and_place
+# G1 WBC는 50Hz 제어를 가정한다 (Arena 기본값은 15Hz)
+env_cfg_override:
+  decimation: 4
+  sim:
+    dt: 0.005
+embodiment:
+  id: g1
+  registry_name: g1_dex1_wbc_pink
+  params: {}
+background:
+  id: kitchen
+  registry_name: lightwheel_kitchen_one_wall_coastal
+  params:
+    collision_mode: mesh
+    repair_collision_mesh_non_watertight: false
+objects:
+- id: mustard_bottle
+  registry_name: mustard_bottle_hope_robolab
+  params: {}
+- id: bowl
+  registry_name: bowl_ycb_robolab
+  params: {}
+object_references:
+- id: right_counter_top
+  parent_id: kitchen
+  prim_path: counter_main_main_group/top_geometry_right
+  object_type: base
+  params: {}
+- id: floor
+  parent_id: kitchen
+  prim_path: floor_room/geometry
+  object_type: base
+  params: {}
+relations:
+- kind: is_anchor
+  subject: floor
+  params: {}
+- kind: is_anchor
+  subject: right_counter_top
+  params: {}
+- kind: 'on'
+  subject: g1
+  reference: floor
+  params: {}
+- kind: next_to
+  subject: g1
+  reference: right_counter_top
+  params:
+    side: negative_y
+    distance_m: 0.05
+- kind: rotate_around_solution
+  subject: g1
+  params:
+    yaw_rad: 1.57
+- kind: 'on'
+  subject: mustard_bottle
+  reference: right_counter_top
+  params: {}
+- kind: 'on'
+  subject: bowl
+  reference: right_counter_top
+  params: {}
+task:
+  composition: atomic
+  description: pick up the mustard bottle and place it in the bowl
+  subtasks:
+  - kind: PickAndPlaceTask
+    params:
+      pick_up_object: mustard_bottle
+      destination_location: bowl
+      background_scene: kitchen

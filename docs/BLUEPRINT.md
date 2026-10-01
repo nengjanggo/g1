@@ -13,9 +13,11 @@ websocket + msgpack server-client로 통신한다.
 |---|---|
 | [src/g1_eval/](../src/g1_eval/) | 직접 작성하는 client package. 모든 benchmark venv에 설치되므로 numpy, msgpack, websockets만 의존 |
 | [policy_server/](../policy_server/) | unifolm-wla venv에서 실행되는 server 쪽 확장 (RTC 등). submodule을 import해서 쓰고, submodule 파일은 수정하지 않음 |
+| [arena_ext/](../arena_ext/) | IsaacLab-Arena venv에서 실행되는 Arena 확장 (G1-Dex1 embodiment 등). submodule을 import해서 쓰고, submodule 파일은 수정하지 않음 |
+| [configs/arena/](../configs/arena/) | Arena environment graph spec YAML (`--env_spec`) |
 | [scripts/](../scripts/) | 실행/검증 entry point |
 | [third_party/](../third_party/) | 외부 repo (git submodule, commit 고정). 각자 자체 `.venv` 사용 |
-| `checkpoints/`, `data/`, `outputs/` | 대용량/generated 파일 (gitignore) |
+| `checkpoints/`, `data/`, `outputs/`, `assets/` | 대용량/generated/외부 asset 파일 (gitignore). `assets/`는 README의 G1-Dex1 asset 추출로 만든다 |
 
 ## g1_eval
 
@@ -62,3 +64,16 @@ server: [action_server_wbc_msgpack_unitree.py](../third_party/unifolm-wla/model_
   - `base_command` (D=4): vx, vy, vw, height
   - `pivot` (D=7)
 - 모델 내부의 통합 action/state 공간은 54-D / 60-D이다: [robot_action_state_processing_en.md](../third_party/unifolm-wla/docs/robot_action_state_processing_en.md)
+
+## arena_ext
+
+IsaacLab-Arena venv와 `PYTHONPATH=<repo root>`로 실행한다. Arena 모듈은 sim app이 뜬 뒤에만 import할 수 있으므로,
+`policy_runner.py --policy_type arena_ext.<module>.<Policy>`로 policy를 불러올 때 같은 모듈의 embodiment도 함께 등록된다.
+
+### [g1_dex1.py](../arena_ext/g1_dex1.py)
+
+`g1_dex1_wbc_pink` embodiment: Arena의 `g1_wbc_pink`(G1 + Dex3)에서 robot USD를 G1 + Dex1으로, 카메라를 머리 + 손목 2개로 바꾼 것.
+- action: `g1_wbc_pink`와 같은 23-D layout. `left/right_hand_state`는 [0, 1]로 잘린 뒤 Dex1 open/close 위치 사이로 선형 보간된다.
+- observation 카메라: `robot_head_cam_rgb`, `left_wrist_cam_rgb`, `right_wrist_cam_rgb` (각 480x640x3).
+- Arena WBC는 43-dof(Dex3) 관절 배열을 가정한다. 그래서 import 시 Arena WBC의 관측/출력 변환 함수를 Dex1용으로 교체한다. 이유는 [DESIGN.md](DESIGN.md#g1-dex1을-arena-wbc에-붙이는-방법) 참고.
+- G1 WBC는 50Hz 제어를 가정하므로 spec YAML에 `env_cfg_override`(dt 0.005, decimation 4)가 있어야 한다 (예: [kitchen_bench_g1_dex1_pick_and_place.yaml](../configs/arena/kitchen_bench_g1_dex1_pick_and_place.yaml)).

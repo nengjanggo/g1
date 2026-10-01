@@ -50,6 +50,17 @@ cd ../..
 
 Isaac Sim wheel이 커서 첫 설치에 30분 이상 걸린다.
 
+### 5. G1-Dex1 robot asset
+
+[unitree_sim_isaaclab](https://github.com/unitreerobotics/unitree_sim_isaaclab)의 asset zip(약 1.2GB)에서 G1 + Dex1 USD(약 51MB)만 `assets/`에 푼다:
+
+```bash
+uvx --from huggingface_hub hf download unitreerobotics/unitree_sim_isaaclab_usds assets.zip \
+    --repo-type dataset --local-dir /tmp/unitree_usds
+unzip -q /tmp/unitree_usds/assets.zip 'assets/robots/g1-29dof_wholebody_dex1/*' -d .
+rm -rf /tmp/unitree_usds
+```
+
 ## 실행
 
 ### Policy server 동작 확인
@@ -96,5 +107,19 @@ OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evaluation/policy_runne
 - GUI 실행 시 약 7 step/s(실시간의 약 0.14배)로 돈다. 대량 평가는 `--viz`를 빼고 headless로 실행한다.
 - 결과 report는 `third_party/IsaacLab-Arena/outputs/<timestamp>/index.html`에 생성된다.
 - 로그의 `[Error] [omni.rtx.materials]`, `MDLC`, PhysX cooking 경고는 배경 asset의 material/mesh 문제로, 실행에는 영향이 없다.
+
+### Kitchen Bench G1-Dex1 동작 확인
+
+Kitchen Bench pick and place를 G1-Dex1로 띄우고, gripper를 100 step마다 열고 닫는다 (third_party/IsaacLab-Arena에서):
+
+```bash
+cd third_party/IsaacLab-Arena
+PYTHONPATH=../.. OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evaluation/policy_runner.py \
+    --viz kit --policy_type arena_ext.g1_dex1.GripperToggleCheckPolicy --num_steps 1500 --enable_cameras \
+    --env_spec ../../configs/arena/kitchen_bench_g1_dex1_pick_and_place.yaml
+```
+
+- G1-Dex1 embodiment는 `--policy_type`으로 지정한 `arena_ext` 모듈을 import할 때 등록된다. 그래서 `PYTHONPATH`에 이 repo root가 있어야 한다.
+- 첫 실행은 주방 asset을 받느라 오래 걸린다.
 
 문제가 생기면 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) 참고.
