@@ -1,0 +1,15 @@
+[project]
+name = 'g1-eval'
+version = '0.1.0'
+description = 'Evaluate VLA policies on Unitree G1 across simulation benchmarks'
+requires-python = '>=3.10'
+# 각 benchmark venv(Isaac/MuJoCo)에도 설치되므로 의존성을 최소로 유지
+dependencies = [
+    'numpy',
+    'msgpack',
+    'websockets>=13',
+]
+
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
