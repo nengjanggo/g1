@@ -27,6 +27,7 @@ from isaaclab.envs import ManagerBasedEnv
 from isaaclab.sensors import CameraCfg
 from isaaclab.utils.configclass import configclass
 
+import arena_ext.plastic_box_parts_scene  # noqa: F401  장면 asset 등록
 import isaaclab_arena_g1.g1_env.mdp.actions.g1_decoupled_wbc_pink_action as pink_action_module
 from arena_ext.unifolm_g1_convert import DEX1_CLOSE_POS, DEX1_OPEN_POS
 from isaaclab_arena.assets.register import register_asset, register_policy

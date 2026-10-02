@@ -10,3 +10,6 @@ outputs/
 
 # 외부 robot asset (unitree_sim_isaaclab_usds에서 추출, README 참고)
 assets/
+
+# Lightwheel 오픈소스 SimReady asset (CC BY-NC 4.0, 직접 다운로드해서 압축 해제)
+Lightwheel_OpenSource/

@@ -93,3 +93,10 @@ IsaacLab-Arena venv와 `PYTHONPATH=<repo root>`로 실행한다. Arena 모듈은
 ### [unifolm_g1_convert.py](../arena_ext/unifolm_g1_convert.py)
 
 unifolm-wla 데이터 규약과 G1-Dex1 sim 값 사이의 변환 (numpy/scipy만 사용, sim 없이 import 가능). EE pose(pelvis frame, gripper 점 ↔ `wrist_yaw_link`)와 gripper 단위(Dex1 관절 위치 ↔ unifolm-wla 값 ↔ Arena `hand_state`)를 다룬다. 근거는 [DESIGN.md](DESIGN.md#unifolm-wla--arena-g1-변환).
+
+### [plastic_box_parts_scene.py](../arena_ext/plastic_box_parts_scene.py)
+
+G1_WBT `Plastic_Box_Parts` task 장면 asset. 실행 방식이 둘이다.
+- `__main__`: sim 없이 pxr로 방(바닥 + 벽 + 천장 조명), 선반, 수납함, 부품 USD를 `assets/generated/plastic_box_parts/`에 생성한다. Arena와 무관한 일반 USD라 다른 sim에서도 쓸 수 있다.
+- import(sim app이 뜬 뒤): 생성된 USD와 procedural 골판지 상자, 밝은 dome light를 Arena asset으로 등록한다(`plastic_box_parts_room`, `boltless_shelf`, `storage_tote`, `cardboard_insert`, `part_tray`, `bright_dome_light`). [g1_dex1.py](../arena_ext/g1_dex1.py)가 import한다.
+- 배치는 [plastic_box_parts_g1_dex1.yaml](../configs/arena/plastic_box_parts_g1_dex1.yaml)에서 좌표로 정한다. 부품은 실제 asset을 찾기 전까지 쓰는 위가 파인 쟁반 모양이다.

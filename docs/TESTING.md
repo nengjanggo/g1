@@ -12,6 +12,7 @@
 | 대상 | 검증 내용 | 결과 |
 |---|---|---|
 | Arena G1-Dex1 WBC 걷기 | 모델 없이 `navigate_cmd` vx 0.2m/s를 5초 넣었을 때 따라가는지 | 시작 후 약 1초 지연 뒤 약 0.2m/s로 전진, 정지 명령에 멈춤 (일회성 확인 script는 repo에 남기지 않음) |
+| Plastic Box Parts 장면 ([plastic_box_parts_g1_dex1.yaml](../configs/arena/plastic_box_parts_g1_dex1.yaml)) | 장면이 뜨고 G1이 서 있는지, 배치/색이 데이터셋 영상과 비슷한지 | 사용자가 GUI로 검토. 부품은 아직 쟁반 모양 대체물 |
 | Kitchen Bench + unifolm-wla ([unifolm_wla_policy.py](../arena_ext/unifolm_wla_policy.py)) | server와 sim이 끝까지 연결되어 도는지 | 동작함. 팔은 몇 cm만 움직이고, 걷기 프롬프트에도 전진 명령을 거의 내지 않음 |
 
 ## Unit test

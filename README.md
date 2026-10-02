@@ -63,6 +63,17 @@ unzip -q /tmp/unitree_usds/assets.zip 'assets/robots/g1-29dof_wholebody_dex1/*' 
 rm -rf /tmp/unitree_usds
 ```
 
+### 6. Plastic Box Parts 장면 asset
+
+선반/수납함/방/부품 USD를 생성한다. 바닥 텍스처는 Poly Haven의 CC0 텍스처를 받는다:
+
+```bash
+mkdir -p assets/textures
+curl -L -o assets/textures/laminate_floor_02_diff_1k.jpg \
+    https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/laminate_floor_02/laminate_floor_02_diff_1k.jpg
+third_party/IsaacLab-Arena/.venv/bin/python arena_ext/plastic_box_parts_scene.py   # assets/generated/plastic_box_parts/
+```
+
 ## 실행
 
 ### Policy server 동작 확인
@@ -123,6 +134,19 @@ PYTHONPATH=../.. OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evalua
 
 - G1-Dex1 embodiment는 `--policy_type`으로 지정한 `arena_ext` 모듈을 import할 때 등록된다. 그래서 `PYTHONPATH`에 이 repo root가 있어야 한다.
 - 첫 실행은 주방 asset을 받느라 오래 걸린다.
+
+### Plastic Box Parts 장면 확인
+
+G1_WBT `Plastic_Box_Parts` task("Move parts from the plastic box to the shelf.")를 본뜬 장면을 띄운다 (third_party/IsaacLab-Arena에서):
+
+```bash
+cd third_party/IsaacLab-Arena
+PYTHONPATH=../.. OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evaluation/policy_runner.py \
+    --viz kit --policy_type arena_ext.g1_dex1.GripperToggleCheckPolicy --num_steps 100000 --enable_cameras \
+    --env_spec ../../configs/arena/plastic_box_parts_g1_dex1.yaml
+```
+
+- 치수/색은 [plastic_box_parts_scene.py](arena_ext/plastic_box_parts_scene.py) 맨 위 상수를 바꾸고 USD를 다시 생성한다. 배치는 spec YAML의 좌표를 바꾼다. 둘 다 sim을 다시 띄워야 반영된다.
 
 ### Kitchen Bench에서 unifolm-wla로 G1-Dex1 제어
 

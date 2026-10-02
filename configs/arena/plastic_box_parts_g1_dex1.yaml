@@ -1,0 +1,79 @@
+# G1_WBT_*_Plastic_Box_Parts ("Move parts from the plastic box to the shelf.") 장면.
+# 방(바닥 + 벽)/선반/수납함/부품은 arena_ext/plastic_box_parts_scene.py가 생성한 USD. 부품은 실제 asset을 찾기 전까지 쓰는 쟁반 모양.
+# world: 방은 10m x 10m(원점 중심), +y 쪽 벽 안쪽면이 y=4.92. 로봇은 (0, 3.95)에서 +x를 보고 서 있고,
+# 선반은 왼쪽(+y)의 벽에 붙어 x 방향으로 길게, 수납함은 로봇 정면 바닥에 있다.
+# 배치는 데이터셋 영상으로 눈대중한 값이라 검토 후 조정한다.
+
+env_name: plastic_box_parts_g1_dex1
+# G1 WBC는 50Hz 제어를 가정한다 (Arena 기본값은 15Hz)
+env_cfg_override:
+  decimation: 4
+  sim:
+    dt: 0.005
+embodiment:
+  id: g1
+  registry_name: g1_dex1_wbc_pink
+  params:
+    # z는 root(pelvis) 높이. 0이면 다리가 바닥에 묻혀 넘어진다
+    initial_pose:
+      position_xyz: [0.0, 3.95, 0.8]
+      rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+background:
+  id: room
+  registry_name: plastic_box_parts_room
+  params: {}
+objects:
+- id: light
+  registry_name: bright_dome_light
+  params: {}
+- id: shelf
+  registry_name: boltless_shelf
+  params:
+    initial_pose:
+      position_xyz: [1.3, 4.65, 0.0]
+      rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+# 수납함, 골판지 상자: 로봇 정면(y = 로봇 y), 긴 변이 y 방향 (z축 90도 회전)
+- id: tote
+  registry_name: storage_tote
+  params:
+    initial_pose:
+      position_xyz: [1.5, 3.95, 0.0]
+      rotation_xyzw: [0.0, 0.0, 0.7071068, 0.7071068]
+- id: cardboard
+  registry_name: cardboard_insert
+  params:
+    initial_pose:
+      position_xyz: [1.5, 3.95, 0.212]
+      rotation_xyzw: [0.0, 0.0, 0.7071068, 0.7071068]
+# 골판지 상자 위 부품 2개: 긴 변이 x 방향, y로 나란히
+- id: part_1
+  registry_name: part_tray
+  params:
+    initial_pose:
+      position_xyz: [1.5, 3.83, 0.44]
+      rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+- id: part_2
+  registry_name: part_tray
+  params:
+    initial_pose:
+      position_xyz: [1.5, 4.07, 0.44]
+      rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+# 선반 가운데 단(윗면 0.78m)에 이미 놓인 부품 2개: 선반을 마주 봤을 때 왼쪽 칸(x 0.3~1.3) 안의 오른쪽 끝, 긴 변이 선반 깊이(y) 방향
+- id: shelf_part_1
+  registry_name: part_tray
+  params:
+    initial_pose:
+      position_xyz: [0.98, 4.65, 0.81]
+      rotation_xyzw: [0.0, 0.0, 0.7071068, 0.7071068]
+- id: shelf_part_2
+  registry_name: part_tray
+  params:
+    initial_pose:
+      position_xyz: [1.18, 4.65, 0.81]
+      rotation_xyzw: [0.0, 0.0, 0.7071068, 0.7071068]
+task:
+  composition: atomic
+  description: Move parts from the plastic box to the shelf.
+  subtasks:
+  - kind: NoTask
+    params: {}

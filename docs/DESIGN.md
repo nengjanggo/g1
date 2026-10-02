@@ -49,3 +49,9 @@
 - **이유:** action mask는 action head의 조건 입력이다. WBT 데이터는 학습 때 base pose 자리가 켜져 있었는데 upstream server는 항상 Dex1 기준 mask(base pose 꺼짐)를 쓴다. 이 mask로는 WBT dataset의 걷는 구간(실제 vx 약 0.11m/s)에서도 예측 vx가 0 근처였고, base pose를 켜면 같은 구간에서 전진을 예측했다(서 있는 구간은 0 근처 유지).
 - **trade-off:** WBT 학습 설정에는 gripper key가 없어서 학습 때 WBT의 gripper 자리는 꺼져 있었을 수 있다. sim에서 gripper를 제어하려고 켜 두었으므로 WBT 조건과 완전히 같지는 않다.
 - **검토한 대안:** submodule의 server mask 수정. submodule은 upstream commit에 고정하고 수정하지 않는다는 원칙([RTC 주입](#rtc를-submodule-수정-없이-주입)과 같은 이유)으로 채택하지 않았다.
+
+## 장면 asset은 독립 USD로 생성
+
+- **결정:** Plastic Box Parts 장면의 고정 물체(방, 선반, 수납함)와 부품은 pxr script로 일반 USD를 생성하고, Arena에는 그 USD를 참조하는 asset으로만 등록한다.
+- **이유:** 데이터셋 장면과 비슷한 기성 asset(볼트 없는 노란 선반, 큰 수납함)이 없었고, 직육면체 조립이 치수와 색을 데이터에 맞추기 가장 쉽다. 일반 USD라 Arena를 다른 sim(unitree_sim_isaaclab, 순수 Isaac Lab)으로 바꿔도 다시 쓸 수 있다.
+- **trade-off:** 장면 수정마다 USD 재생성과 sim 재시작이 필요하다(Arena env는 생성 시 장면을 고정한다).
