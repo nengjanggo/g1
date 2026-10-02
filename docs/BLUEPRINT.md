@@ -45,6 +45,10 @@ Real-Time Chunking(RTC) guided flow sampling. Physical Intelligence의 공식 JA
 - `prev_action_chunk`는 현재 state 기준의 **normalized unified action** (B, H, 54)이어야 한다. EE와 base pose action이 현재 state에 대한 상대값이라, 이전 chunk를 현재 state 기준으로 다시 표현해야 한다.
 - 이유와 대안은 [DESIGN.md](DESIGN.md#rtc를-submodule-수정-없이-주입) 참고.
 
+### [unitree_server.py](../policy_server/unitree_server.py)
+
+upstream model_server 실행 진입점. 인자와 protocol은 upstream과 같고, `unnorm_key`가 `UnifoLM_WBT`인 요청에만 base pose 자리를 켠 action mask를 넘긴다. 이유는 [DESIGN.md](DESIGN.md#wbt-요청의-action-mask) 참고.
+
 ## unifolm-wla model_server contract
 
 server: [action_server_wbc_msgpack_unitree.py](../third_party/unifolm-wla/model_server/action_server_wbc_msgpack_unitree.py)
@@ -63,6 +67,8 @@ server: [action_server_wbc_msgpack_unitree.py](../third_party/unifolm-wla/model_
   - `lower_body` (D=15)
   - `base_command` (D=4): vx, vy, vw, height
   - `pivot` (D=7)
+- action mask는 모델의 조건 입력이다. upstream server는 항상 Dex1 기준 mask를 쓰므로 WBT key로 요청할 때는 [unitree_server.py](../policy_server/unitree_server.py)를 쓴다.
+- `left/right_gripper` action 단위는 `unnorm_key`마다 다르다 (Dex1: 5.6 열림 ~ 0 닫힘, WBT: 약 +1 열림 ~ -1 닫힘). obs의 gripper state는 두 key 모두 Dex1 명령 단위(5.6 열림 ~ 0 닫힘)로 보낸다.
 - 모델 내부의 통합 action/state 공간은 54-D / 60-D이다: [robot_action_state_processing_en.md](../third_party/unifolm-wla/docs/robot_action_state_processing_en.md)
 
 ## arena_ext
@@ -72,8 +78,18 @@ IsaacLab-Arena venv와 `PYTHONPATH=<repo root>`로 실행한다. Arena 모듈은
 
 ### [g1_dex1.py](../arena_ext/g1_dex1.py)
 
-`g1_dex1_wbc_pink` embodiment: Arena의 `g1_wbc_pink`(G1 + Dex3)에서 robot USD를 G1 + Dex1으로, 카메라를 머리 + 손목 2개로 바꾼 것.
+`g1_dex1_wbc_pink` embodiment: Arena의 `g1_wbc_pink`(G1 + Dex3)에서 robot USD를 G1 + Dex1으로, 카메라를 unitree_sim_isaaclab의 G1 머리 카메라 + Dex1 손목 2개로 바꾼 것.
 - action: `g1_wbc_pink`와 같은 23-D layout. `left/right_hand_state`는 [0, 1]로 잘린 뒤 Dex1 open/close 위치 사이로 선형 보간된다.
 - observation 카메라: `robot_head_cam_rgb`, `left_wrist_cam_rgb`, `right_wrist_cam_rgb` (각 480x640x3).
 - Arena WBC는 43-dof(Dex3) 관절 배열을 가정한다. 그래서 import 시 Arena WBC의 관측/출력 변환 함수를 Dex1용으로 교체한다. 이유는 [DESIGN.md](DESIGN.md#g1-dex1을-arena-wbc에-붙이는-방법) 참고.
 - G1 WBC는 50Hz 제어를 가정하므로 spec YAML에 `env_cfg_override`(dt 0.005, decimation 4)가 있어야 한다 (예: [kitchen_bench_g1_dex1_pick_and_place.yaml](../configs/arena/kitchen_bench_g1_dex1_pick_and_place.yaml)).
+
+### [unifolm_wla_policy.py](../arena_ext/unifolm_wla_policy.py)
+
+`UnifolmWlaPolicy` (`--policy_type arena_ext.unifolm_wla_policy.UnifolmWlaPolicy`): G1-Dex1 Arena 관측을 unifolm-wla server obs로 바꿔 보내고, 받은 chunk(30 FPS)를 `g1_dex1_wbc_pink`의 23-D action으로 바꿔 실행한다.
+- `num_envs=1` 전용. `replan_steps` sim step마다 chunk를 새로 받는다 (sim은 추론 동안 멈추므로 동기 실행).
+- 실행에 쓰는 출력: 양손 EE pose, gripper, `base_command`(속도 3 + 골반 높이), waist(torso 자세 명령으로 근사). 다리 관절 출력은 쓰지 않는다.
+
+### [unifolm_g1_convert.py](../arena_ext/unifolm_g1_convert.py)
+
+unifolm-wla 데이터 규약과 G1-Dex1 sim 값 사이의 변환 (numpy/scipy만 사용, sim 없이 import 가능). EE pose(pelvis frame, gripper 점 ↔ `wrist_yaw_link`)와 gripper 단위(Dex1 관절 위치 ↔ unifolm-wla 값 ↔ Arena `hand_state`)를 다룬다. 근거는 [DESIGN.md](DESIGN.md#unifolm-wla--arena-g1-변환).

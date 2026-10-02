@@ -9,7 +9,6 @@ Arena의 `g1_wbc_pink`(G1 + Dex3)를 상속해서 다음만 바꾼다.
 Arena venv에서 sim app이 뜬 뒤에 import되어야 하므로 `--policy_type arena_ext.g1_dex1.<Policy>`로 불러 등록한다.
 Dex1 관련 값의 출처: https://github.com/unitreerobotics/unitree_sim_isaaclab (Apache-2.0)
   robots/unitree.py (G129_CFG_WITH_DEX1_WHOLEBODY), tasks/common_config/camera_configs.py,
-  tools/data_convert.py (gripper 관절 범위)
 '''
 
 from dataclasses import dataclass
@@ -29,6 +28,7 @@ from isaaclab.sensors import CameraCfg
 from isaaclab.utils.configclass import configclass
 
 import isaaclab_arena_g1.g1_env.mdp.actions.g1_decoupled_wbc_pink_action as pink_action_module
+from arena_ext.unifolm_g1_convert import DEX1_CLOSE_POS, DEX1_OPEN_POS
 from isaaclab_arena.assets.register import register_asset, register_policy
 from isaaclab_arena.embodiments.g1.g1 import G1_CFG, G1CameraCfg, G1WBCPinkEmbodiment
 from isaaclab_arena.policy.policy_base import PolicyBase, PolicyCfg
@@ -36,6 +36,7 @@ from isaaclab_arena.utils.pose import Pose
 from isaaclab_arena_g1.g1_env.mdp.actions.g1_decoupled_wbc_pink_action import G1DecoupledWBCPinkAction
 from isaaclab_arena_g1.g1_env.mdp.actions.g1_decoupled_wbc_pink_action_cfg import G1DecoupledWBCPinkActionCfg
 from isaaclab_arena_g1.g1_whole_body_controller.wbc_policy.policy.action_constants import (
+    BASE_HEIGHT_CMD_START_IDX,
     LEFT_HAND_STATE_IDX,
     RIGHT_HAND_STATE_IDX,
 )
@@ -43,10 +44,6 @@ from isaaclab_arena_g1.g1_whole_body_controller.wbc_policy.policy.action_constan
 G1_DEX1_USD_PATH: Path = (
     Path(__file__).resolve().parents[1] / 'assets/robots/g1-29dof_wholebody_dex1/g1_29dof_with_dex1_rev_1_0.usd'
 )
-
-# Dex1 손가락 prismatic 관절 위치 [m] (unitree_sim_isaaclab tools/data_convert.py)
-DEX1_OPEN_POS: float = -0.02
-DEX1_CLOSE_POS: float = 0.024
 
 # 손마다 두 손가락 관절. 순서: left finger 1, left finger 2, right finger 1, right finger 2
 DEX1_JOINT_NAMES: list[str] = ['left_hand_Joint1_1', 'left_hand_Joint2_1', 'right_hand_Joint1_1', 'right_hand_Joint2_1']
@@ -64,7 +61,7 @@ DEX3_SLOT_TO_DEX1_JOINT: dict[str, str] = {
 G1_DEX1_CFG: ArticulationCfg = G1_CFG.copy()
 G1_DEX1_CFG.spawn.usd_path = str(G1_DEX1_USD_PATH)
 G1_DEX1_CFG.init_state.joint_pos = {**G1_CFG.init_state.joint_pos, '.*_hand_Joint.*': DEX1_OPEN_POS}
-# ponytail: unitree의 friction=200은 Isaac Lab 3에서 의미가 달라질 수 있어 뺐다. gripper가 미끄러지면 추가 검토
+# unitree의 friction=200은 Isaac Lab 3에서 의미가 달라질 수 있어 뺐다. gripper가 미끄러지면 추가 검토
 G1_DEX1_CFG.actuators['hands'] = ImplicitActuatorCfg(
     joint_names_expr=['.*_hand_Joint.*'],
     stiffness=800.0,
@@ -111,8 +108,25 @@ def make_dex1_wrist_camera_cfg(
 
 @configclass
 class G1Dex1CameraCfg(G1CameraCfg):
-    '''Arena G1 머리 카메라 + Dex1 손목 카메라 2개.'''
+    '''unitree_sim_isaaclab의 G1 머리 카메라(g1_front_camera) + Dex1 손목 카메라 2개.'''
 
+    # Arena 머리 카메라(focal 15, 수평 화각 ~70°)는 실제 G1 데이터보다 좁아서 unitree 설정으로 교체:
+    # d435_link에 붙여 link x축(47.6° 아래)을 보고, focal 7.6 / aperture 20 (수평 화각 ~105°)
+    robot_head_cam: CameraCfg = CameraCfg(
+        prim_path='{ENV_REGEX_NS}/Robot/d435_link/front_cam',
+        update_period=0.0,
+        height=480,
+        width=640,
+        data_types=['rgb'],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=7.6,
+            focus_distance=400.0,
+            horizontal_aperture=20.0,
+            clipping_range=(0.1, 1.0e5),
+        ),
+        # unitree 설정의 wxyz quaternion (0.5, -0.5, 0.5, -0.5)을 xyzw 순서로
+        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(-0.5, 0.5, -0.5, 0.5), convention='ros'),
+    )
     left_wrist_cam: CameraCfg = make_dex1_wrist_camera_cfg('left', 1.0)
     right_wrist_cam: CameraCfg = make_dex1_wrist_camera_cfg('right', -1.0)
 
@@ -257,10 +271,13 @@ class GripperToggleCheckPolicyCfg(PolicyCfg):
 
     toggle_period_steps: int = 100
 
+    # 목표 골반 높이 [m]. 0이면 WBC가 바닥까지 주저앉으려다 넘어진다 (Arena G1 test도 0.75 사용)
+    base_height_cmd: float = 0.75
+
 
 @register_policy
 class GripperToggleCheckPolicy(PolicyBase[GripperToggleCheckPolicyCfg]):
-    '''팔/이동 명령은 0으로 두고 양손 hand_state만 일정 주기로 열고 닫는 확인용 policy.'''
+    '''팔/이동 명령은 0, 골반 높이는 base_height_cmd로 두고 양손 hand_state만 일정 주기로 열고 닫는 확인용 policy.'''
 
     name = 'g1_dex1_gripper_toggle_check'
 
@@ -278,11 +295,12 @@ class GripperToggleCheckPolicy(PolicyBase[GripperToggleCheckPolicyCfg]):
         observation: GymSpacesDict,
     ) -> torch.Tensor:
         '''
-        0 action에 hand_state만 toggle_period_steps마다 0(open)과 1(close)을 번갈아 넣어 반환한다.
+        0 action에 base_height_cmd를 넣고, hand_state는 toggle_period_steps마다 0(open)과 1(close)을 번갈아 넣어 반환한다.
 
         반환 shape: (num_envs, action_dim)
         '''
         action: torch.Tensor = torch.zeros(env.action_space.shape, device=torch.device(env.unwrapped.device))  # (num_envs, action_dim)
+        action[:, BASE_HEIGHT_CMD_START_IDX] = self.config.base_height_cmd
         hand_state: float = float((self.step_count // self.config.toggle_period_steps) % 2)
         action[:, [LEFT_HAND_STATE_IDX, RIGHT_HAND_STATE_IDX]] = hand_state
         self.step_count += 1

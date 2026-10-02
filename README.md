@@ -46,6 +46,8 @@ cd third_party/IsaacLab-Arena
 # OMNI_KIT_ACCEPT_EULA: Isaac Sim EULA 동의 (없으면 설치/실행 중 대화형 prompt에서 멈춤)
 OMNI_KIT_ACCEPT_EULA=YES UV_HTTP_TIMEOUT=300 uv sync --frozen
 cd ../..
+# unifolm-wla server와 통신하는 g1_eval client를 Arena venv에도 설치 (msgpack, websockets는 이미 있음)
+uv pip install -e . --python third_party/IsaacLab-Arena/.venv/bin/python --no-deps
 ```
 
 Isaac Sim wheel이 커서 첫 설치에 30분 이상 걸린다.
@@ -121,5 +123,26 @@ PYTHONPATH=../.. OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evalua
 
 - G1-Dex1 embodiment는 `--policy_type`으로 지정한 `arena_ext` 모듈을 import할 때 등록된다. 그래서 `PYTHONPATH`에 이 repo root가 있어야 한다.
 - 첫 실행은 주방 asset을 받느라 오래 걸린다.
+
+### Kitchen Bench에서 unifolm-wla로 G1-Dex1 제어
+
+server와 sim을 같이 띄우면 VRAM을 약 21GB 쓴다 (server 약 14GB).
+
+```bash
+# 터미널 1: server (third_party/unifolm-wla에서). WBT key 요청에 맞는 action mask를 쓰는 진입점
+cd third_party/unifolm-wla
+PYTHONPATH=.:../.. .venv/bin/python -m policy_server.unitree_server \
+    --ckpt_path ../../checkpoints/UnifoLM-WLA-1.0-Base/checkpoints/model.safetensors --host 127.0.0.1 --port 8600
+
+# 터미널 2: server log에 'listening on'이 뜬 뒤 sim 실행 (third_party/IsaacLab-Arena에서)
+cd third_party/IsaacLab-Arena
+PYTHONPATH=../.. OMNI_KIT_ACCEPT_EULA=YES .venv/bin/python isaaclab_arena/evaluation/policy_runner.py \
+    --viz kit --policy_type arena_ext.unifolm_wla_policy.UnifolmWlaPolicy --num_episodes 1 --enable_cameras \
+    --env_spec ../../configs/arena/kitchen_bench_g1_dex1_pick_and_place.yaml
+```
+
+- instruction은 spec YAML의 task `description`이 그대로 들어간다.
+- `--unnorm_key`로 dataset 통계를 고른다: `UnifoLM_G1_Dex1`(기본, tabletop 조작) 또는 `UnifoLM_WBT`(걷기 포함 whole-body).
+- `--record_camera_video`를 붙이면 머리/손목 카메라 영상이 `outputs/<timestamp>/`에 저장된다.
 
 문제가 생기면 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) 참고.
